@@ -15,3 +15,5 @@ eframe = { version = "0.28", features = ["default"] }
 egui_extras = { version = "0.28", features = ["default", "all_loaders"] }
 image = { version = "0.25", features = ["jpeg", "png"] }
 byte-slice-cast = "1"
+rdev = "0.5"
+winapi = { version = "0.3", features = ["winuser", "wingdi"] }
