@@ -43,7 +43,10 @@ fn screen(state: Arc<Mutex<State>>, tx: mpsc::Sender<()>) {
                     state.click += 1;
                     if state.click >= 3 {
                         state.should_exit = true; // Impostiamo il flag di uscita
-                        tx.send(()).unwrap(); // Inviamo un segnale per uscire dal thread
+                        if let Err(send_error) = tx.send(()) {
+                            eprintln!("Failed to send exit signal: {:?}", send_error);
+                            return;
+                        }
                         return; // Uscita anticipata dal thread
                     }
                     current_position = clamp_point(current_position, 1920, 1080);
@@ -69,7 +72,7 @@ fn screen(state: Arc<Mutex<State>>, tx: mpsc::Sender<()>) {
 }
 
 
-fn wrapper_schermo()-> ((i32, i32), (i32, i32)){
+pub fn wrapper_schermo()-> ((i32, i32), (i32, i32)){
     let state = Arc::new(Mutex::new(State {
         p1: (0, 0),
         p2: (0, 0),
@@ -89,13 +92,6 @@ fn wrapper_schermo()-> ((i32, i32), (i32, i32)){
     let state = state.lock().unwrap();
     (state.p1, state.p2)
 }
-fn main() {
-
-    let stat = wrapper_schermo();
-    println!("1p1: {:?}", stat.0);
-    println!("p2: {:?}", stat.1);
-}
-
 
 fn clamp_point(point: (i32, i32), max_width: i32, max_height: i32) -> (i32, i32) {
     let clamped_x = point.0.clamp(0, max_width);

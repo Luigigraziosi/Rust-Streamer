@@ -2,10 +2,9 @@ use std::sync::{Arc, Mutex};
 
 use image::ImageFormat;
 use rust_streamer::streaming::Streaming;
-
 use clap::{Args, Parser, Subcommand};
 use eframe::egui::{self, Color32, Key};
-
+mod personalizedarea;
 use std::net::Ipv4Addr;
 
 fn is_valid_ipv4(ip: &str) -> bool {
@@ -137,9 +136,12 @@ impl eframe::App for MyApp {
                             }
                         }
                         if ui.selectable_value(&mut true, self.selected_screen_area.is_some(), "Personalized area").clicked(){
-                            self.selected_screen_area = todo!();
+                            let stat = personalizedarea::wrapper_schermo();
+                            println!("1p1: {:?}", stat.0);
+                            println!("p2: {:?}", stat.1);
                             if let Some(Streaming::Server(ss)) = &self._streaming {
-                                ss.capture_resize((&self.selected_screen_area).unwrap().startx, (&self.selected_screen_area).unwrap().starty, (&self.selected_screen_area).unwrap().endx, (&self.selected_screen_area).unwrap().endy)
+                                ss.capture_resize(stat.0.0.try_into().unwrap(), stat.0.1.try_into().unwrap(),
+                                stat.1.0.try_into().unwrap(), stat.0.1.try_into().unwrap())
                             }
                         }
                     });
