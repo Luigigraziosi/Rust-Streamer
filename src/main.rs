@@ -4,7 +4,6 @@ use image::ImageFormat;
 use rust_streamer::streaming::Streaming;
 use clap::{Args, Parser, Subcommand};
 use eframe::egui::{self, Color32, Key};
-mod personalizedarea;
 use std::net::Ipv4Addr;
 
 fn is_valid_ipv4(ip: &str) -> bool {
@@ -72,7 +71,11 @@ struct MyApp {
     transmission_status: TransmissionStatus,
     pause: bool,
     wrong_ip: bool,
-    blanking_screen: bool
+    blanking_screen: bool,
+    slider_value1: f32,
+    slider_value2: f32,
+    slider_value3: f32,
+    slider_value4: f32,
 }
 
 impl MyApp {
@@ -95,7 +98,11 @@ impl MyApp {
             transmission_status: TransmissionStatus::default(),
             pause: false,
             wrong_ip: false,
-            blanking_screen: false
+            blanking_screen: false,
+            slider_value1: 0.0,
+            slider_value2: 0.0,
+            slider_value3: 0.0,
+            slider_value4: 0.0,
         }
     }
 }
@@ -136,12 +143,35 @@ impl eframe::App for MyApp {
                             }
                         }
                         if ui.selectable_value(&mut true, self.selected_screen_area.is_some(), "Personalized area").clicked(){
-                            let stat = personalizedarea::wrapper_schermo();
-                            println!("1p1: {:?}", stat.0);
-                            println!("p2: {:?}", stat.1);
+                            self.selected_screen_area = Some(ScreenArea {
+                                startx: 0,
+                                starty: 0,
+                                endx: 0,
+                                endy: 0,
+                            });
+                        }
+                        if self.selected_screen_area.is_some(){
+                            ui.label("Left:");
+                            ui.add(egui::Slider::new(&mut self.slider_value1, 0.0..=1920.0));
+                            ui.label("Top:");
+                            ui.add(egui::Slider::new(&mut self.slider_value2, 0.0..=1080.0));
+                            ui.label("Right:");
+                            ui.add(egui::Slider::new(&mut self.slider_value3, 0.0..=1920.0));
+                            ui.label("Bottom:");
+                            ui.add(egui::Slider::new(&mut self.slider_value4, 0.0..=1080.0));                         
+                            
                             if let Some(Streaming::Server(ss)) = &self._streaming {
-                                ss.capture_resize(stat.0.0.try_into().unwrap(), stat.0.1.try_into().unwrap(),
-                                stat.1.0.try_into().unwrap(), stat.0.1.try_into().unwrap())
+                                let startx = self.slider_value1.round() as u32;
+                                let starty = self.slider_value2.round() as u32;
+                                let endx = 1920 - self.slider_value3.round() as u32;
+                                let endy = 1080 - self.slider_value4.round() as u32;
+
+                                #[cfg(target_os = "linux")]
+                                ss.capture_resize(startx, starty, endx, endy);
+                                #[cfg(target_os = "windows")]
+                                ss.capture_resize(startx, starty, endx, endy);
+                                #[cfg(target_os = "macos")]
+                                ss.capture_resize(startx, starty, endx, endy);
                             }
                         }
                     });
