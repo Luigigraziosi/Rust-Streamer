@@ -5,6 +5,7 @@ use rust_streamer::streaming::Streaming;
 use clap::{Args, Parser, Subcommand};
 use eframe::egui::{self, Color32, Key};
 use std::net::Ipv4Addr;
+use winit::event_loop::EventLoop;
 
 fn is_valid_ipv4(ip: &str) -> bool {
     ip.parse::<Ipv4Addr>().is_ok()
@@ -76,10 +77,24 @@ struct MyApp {
     slider_value2: f32,
     slider_value3: f32,
     slider_value4: f32,
+    screen_width: u32,
+    screen_height: u32,
 }
 
 impl MyApp {
     fn new() -> Self {
+        let event_loop = EventLoop::new();
+
+        // Get monitor dimensions
+        let primary_monitor = event_loop.available_monitors().next().expect("No monitors available");
+        let video_mode = primary_monitor
+            .video_modes()
+            .next()
+            .expect("No video modes available");
+        let screen_width = video_mode.size().width;
+        let screen_height = video_mode.size().height;
+
+
         // TODO not use a fake streaming
         let current_image = Arc::new(Mutex::new(Some(egui::ColorImage::new(
             [200, 200],
@@ -103,6 +118,8 @@ impl MyApp {
             slider_value2: 0.0,
             slider_value3: 0.0,
             slider_value4: 0.0,
+            screen_width: screen_width,
+            screen_height: screen_height,
         }
     }
 }
@@ -150,28 +167,55 @@ impl eframe::App for MyApp {
                                 endy: 0,
                             });
                         }
-                        if self.selected_screen_area.is_some(){
-                            ui.label("Left:");
-                            ui.add(egui::Slider::new(&mut self.slider_value1, 0.0..=1920.0));
-                            ui.label("Top:");
-                            ui.add(egui::Slider::new(&mut self.slider_value2, 0.0..=1080.0));
-                            ui.label("Right:");
-                            ui.add(egui::Slider::new(&mut self.slider_value3, 0.0..=1920.0));
-                            ui.label("Bottom:");
-                            ui.add(egui::Slider::new(&mut self.slider_value4, 0.0..=1080.0));                         
-                            
+                        if self.selected_screen_area.is_some() {
+                            ui.vertical_centered_justified(|ui| {
+                                ui.horizontal(|ui| {
+                                    ui.label("Left:  ");
+                                    ui.add(egui::Slider::new(&mut self.slider_value1, 0.0..=(self.screen_width-1) as f32));
+                                });
+                                ui.horizontal(|ui| {
+                                    ui.label("Right:");
+                                    ui.add(egui::Slider::new(&mut self.slider_value3, 0.0..=(self.screen_width-1) as f32));
+                                });
+                                
+                            });
+                            ui.vertical_centered_justified(|ui| {
+                                ui.horizontal(|ui| {
+                                    ui.label("Top:      ");
+                                    ui.add(egui::Slider::new(&mut self.slider_value2, 0.0..=(self.screen_height-1) as f32));
+                                });
+                                ui.horizontal(|ui| {
+                                    ui.label("Bottom:");
+                                    ui.add(egui::Slider::new(&mut self.slider_value4, 0.0..=(self.screen_height-1) as f32));
+                                });
+            
+                                if let Some(Streaming::Server(ss)) = &self._streaming {
+                                    let startx = self.slider_value1.round() as u32;
+                                    let starty = self.slider_value2.round() as u32;
+                                    let endx = self.screen_width - self.slider_value3.round() as u32;
+                                    let endy = self.screen_height - self.slider_value4.round() as u32;
+                                    if !verifica(&startx, &starty, &endx, &endy){
+                                        self.slider_value1 = 0.0;
+                                        self.slider_value2 = 0.0;
+                                        self.slider_value3 = 0.0;
+                                        self.slider_value4 = 0.0;
+                                        self.selected_screen_area = None;
+                                    }
+                                    else{
+                                        #[cfg(target_os = "linux")]
+                                        ss.capture_resize(startx, starty, endx, endy);
+                                        #[cfg(target_os = "windows")]
+                                        ss.capture_resize(startx, starty, endx, endy);
+                                        #[cfg(target_os = "macos")]
+                                        ss.capture_resize(startx, starty, endx, endy);
+                                    }
+                                
+                                }
+                            });
+                        };
+                        if !self.selected_screen_area.is_some() {
                             if let Some(Streaming::Server(ss)) = &self._streaming {
-                                let startx = self.slider_value1.round() as u32;
-                                let starty = self.slider_value2.round() as u32;
-                                let endx = 1920 - self.slider_value3.round() as u32;
-                                let endy = 1080 - self.slider_value4.round() as u32;
-
-                                #[cfg(target_os = "linux")]
-                                ss.capture_resize(startx, starty, endx, endy);
-                                #[cfg(target_os = "windows")]
-                                ss.capture_resize(startx, starty, endx, endy);
-                                #[cfg(target_os = "macos")]
-                                ss.capture_resize(startx, starty, endx, endy);
+                                ss.capture_fullscreen();
                             }
                         }
                     });
@@ -380,5 +424,17 @@ fn main() {
         }),
     )
     .unwrap();
+
     println!("Finished");
+}
+
+fn verifica(startx :&u32, starty :&u32, endx :&u32, endy :&u32) -> bool{
+
+    if startx >= endx {
+        return false;
+    }
+    if starty >= endy {
+        return false;
+    }
+    true
 }
