@@ -200,6 +200,7 @@ impl eframe::App for MyApp {
                                         self.slider_value3 = 0.0;
                                         self.slider_value4 = 0.0;
                                         self.selected_screen_area = None;
+                                        ui.colored_label(Color32::RED, "Errore resize dello schermo!");
                                     }
                                     else{
                                         #[cfg(target_os = "linux")]
@@ -384,7 +385,6 @@ impl eframe::App for MyApp {
                             }
                         }
                     });
-
                 }
                 TransmissionStatus::Receiving => {
                     ui.label(format!("Receiving from {}...", self.caster_address));
